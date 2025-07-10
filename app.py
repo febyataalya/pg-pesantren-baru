@@ -2,18 +2,18 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from users import check_user, get_user_role, register_user
-from db import get_db_connection  # Pastikan Anda punya file db.py untuk koneksi database
+from db import get_db_connection
 import json
 
 # Inisialisasi aplikasi
 app = Flask(__name__)
-app.secret_key = 'rahasia_super_aman'
+app.secret_key = os.environ.get("SECRET_KEY", "rahasia_super_aman")
 
-# Konfigurasi database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@localhost/pabrik_gula'
+# Konfigurasi database (gunakan environment variable di Railway)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Konfigurasi upload file
+# Konfigurasi upload
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'xlsx', 'xls', 'csv', 'png', 'jpg', 'jpeg', 'pdf'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -21,7 +21,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Inisialisasi database
 db = SQLAlchemy(app)
 
-# Import dan register Blueprints
+# Register Blueprints
 from keuangan.routes import keuangan_bp
 from sekum.routes import sekum_bp
 from pembukuan.routes import pembukuan_bp
@@ -44,7 +44,7 @@ app.register_blueprint(pengelolaan_bp, url_prefix='/pengelolaan')
 app.register_blueprint(ajuan_sppd_bp, url_prefix='/ajuan_sppd')
 app.register_blueprint(auth_bp, url_prefix='/auth')
 
-# ========== LOGIN ==========
+# ====== ROUTE ======
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -63,20 +63,17 @@ def login():
             session['role'] = role
             flash('Login berhasil.', 'success')
 
-            # Arahkan berdasarkan role
             if role == 'admin':
                 return redirect(url_for('dashboard'))
             elif role == 'driver':
-                return redirect(url_for('ajuan_sppd.driver_form_lokasi'))  # Arahkan driver ke form lokasi
+                return redirect(url_for('ajuan_sppd.driver_form_lokasi'))
             else:
-                return redirect(url_for('dashboard'))  # default
+                return redirect(url_for('dashboard'))
         else:
             flash('Username atau password salah!', 'danger')
             return redirect(url_for('login'))
 
     return render_template('auth/login.html')
-
-# ========== REGISTER ==========
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -103,8 +100,6 @@ def register():
 
     return render_template('auth/register.html')
 
-# ========== DASHBOARD ==========
-
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session:
@@ -117,15 +112,11 @@ def dashboard():
         role=session.get('role')
     )
 
-# ========== LOGOUT ==========
-
 @app.route('/logout')
 def logout():
     session.clear()
     flash('Berhasil logout.', 'info')
     return redirect(url_for('login'))
-
-# ========== GANTI PASSWORD ==========
 
 @app.route('/ganti-password', methods=['GET', 'POST'])
 def ganti_password():
@@ -154,8 +145,6 @@ def ganti_password():
 
     return render_template('auth/ganti_password.html')
 
-# ========== DRIVER KIRIM LOKASI ==========
-
 @app.route('/ajuan_sppd/driver/kirim-lokasi', methods=['GET', 'POST'])
 def driver_form_lokasi():
     if 'username' not in session or session.get('role') != 'driver':
@@ -183,7 +172,6 @@ def driver_form_lokasi():
         flash('Lokasi berhasil dikirim.', 'success')
         return redirect(url_for('driver_form_lokasi'))
 
-    # Ambil semua data ajuan_sppd
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT id, nama, tujuan FROM ajuan_sppd ORDER BY berangkat DESC")
@@ -192,7 +180,4 @@ def driver_form_lokasi():
 
     return render_template('ajuan_sppd/driver_kirim_lokasi.html', data=data)
 
-# Jalankan aplikasi
-if __name__ == '__main__':
-    app.run(debug=True)
-
+# Catatan: JANGAN tulis app.run() karena Railway pakai gunicorn
