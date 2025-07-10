@@ -2,7 +2,7 @@ import json
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# === Konstanta ===
+# === Konstanta ===     
 USERS_FILE = 'users.json'
 DEFAULT_ROLE = 'viewer'
 
