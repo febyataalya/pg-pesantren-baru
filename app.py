@@ -4,13 +4,19 @@ from flask_sqlalchemy import SQLAlchemy
 from users import check_user, get_user_role, register_user
 from db import get_db_connection
 import json
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Inisialisasi aplikasi
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "rahasia_super_aman")
 
-# Konfigurasi database (gunakan environment variable di Railway)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+# Perbaiki URL database jika pakai mysql:// dari Railway
+db_url = os.environ.get("DATABASE_URL")
+if db_url and db_url.startswith("mysql://"):
+    db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Konfigurasi upload
@@ -179,5 +185,3 @@ def driver_form_lokasi():
     conn.close()
 
     return render_template('ajuan_sppd/driver_kirim_lokasi.html', data=data)
-
-# Catatan: JANGAN tulis app.run() karena Railway pakai gunicorn
